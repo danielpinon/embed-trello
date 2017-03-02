@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Trello Printer</title>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
+    <link rel="stylesheet" href="https://trello.com/css/static.css">
+</head>
+
+<body class="trello trello-static-board">
+
+    <div id="out">
+        No Trello JSON data found !
+    </div>
+
+    <script type="text/html" id="template-output">
+        <div class="trello-embed">
+            <div class="trello-board">
+                <div class="trello-board-header" class="clearfix">
+                    <a class="trello-board-name"><span>{{board}}</span></a>
+                </div>
+                <!-- Trello Board Header -->
+                <div class="trello-lists">{{#lists}}
+                    <span class="trello-list">
+                        <span class="trello-list-name">{{name}}</span>
+                    <span class="trello-list-cards">{{#cards}}
+                            <a class="trello-card trello-clearfix">
+                                <span class="trello-card-labels trello-clearfix">{{#labels}}<span class="trello-card-label trello-card-{{color}}-label"></span>{{/labels}}</span>
+                    {{#attachments}}<span class="trello-card-cover" style="background-image: url('{{url}}'); height: 180.7px; background-color:#fcc428;"></span>{{/attachments}}
+                    <span class="trello-card-title">{{name}}</span>
+                    <span class="trello-card-badges">{{#badges}}
+                        {{#votes}}<span class="trello-card-badge">
+                            <span class="trello-icon trello-icon-vote"></span>
+                    <span class="trello-badge-text">{{votes}}</span>
+                    </span>{{/votes}} {{#comments}}
+                    <span class="trello-card-badge">
+                            <span class="trello-icon trello-icon-comment"></span>
+                    <span class="trello-badge-text">{{comments}}</span>
+                    </span>{{/comments}} {{#attachments}}
+                    <span class="trello-card-badge">
+                            <span class="trello-icon trello-icon-attachment"></span>
+                    <span class="trello-badge-text">{{attachments}}</span>
+                    </span>{{/attachments}} {{/badges}}
+                    </span>
+                    <span class="trello-card-members"></span>
+                    </a>
+                    {{/cards}}</span>
+                    </span>
+                    {{/lists}}</div>
+                <!-- Trello Lists -->
+            </div>
+            <!-- Trello Board -->
+        </div>
+        <!-- Trello Embed -->
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js" type="text/javascript"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment.min.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.6/marked.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        function eatData(trelloJson) {
+            var data = {
+                board: trelloJson.name,
+                lists: [],
+                ref: {}
+            }
+
+            for (i in trelloJson.lists) {
+                var list = trelloJson.lists[i]
+                if (list.closed) {
+                    //continue
+                }
+                data.ref[list.id] = {
+                    name: list.name,
+                    cards: []
+                }
+                data.lists.push(data.ref[list.id])
+            }
+
+
+            for (i in trelloJson.cards) {
+                var card = trelloJson.cards[i]
+                    // skip closed card and those from ignored list
+                if (card.closed | !data.ref[card.idList]) {
+                    continue
+                }
+
+                data.ref[card.id] = {
+                    name: card.name,
+                    desc: marked(card.desc),
+                    attachments: card.attachments,
+                    labels: card.labels,
+                    badges: card.badges,
+                    actions: []
+                }
+
+                data.ref[card.idList].cards.push(data.ref[card.id])
+
+            }
+
+            for (i in trelloJson.actions) {
+                var action = trelloJson.actions[i]
+                if (action.type != "commentCard") {
+                    continue
+                }
+
+
+                data.ref[action.id] = {
+                    text: marked(action.data.text),
+                    date: moment(action.date).format('YYYY-MM-DD')
+                }
+                try {
+                    data.ref[action.data.card.id].actions.push(data.ref[action.id])
+                } catch (e) {}
+            }
+
+            return data;
+        }
+
+        function showData(data) {
+            var template = $('#template-output').html()
+            console.log(JSON.stringify(data, null, 2))
+            $('#out').html(Mustache.render(template, data))
+        }
+
+        function autorun() {
+            if (null == data) {
+                return alert('Please insert JSON data from Trello in the code')
+            }
+            showData(eatData(data));
+        }
+        if (document.addEventListener) document.addEventListener("DOMContentLoaded", autorun, false);
+        else if (document.attachEvent) document.attachEvent("onreadystatechange", autorun);
+        else window.onload = autorun;
+
+
+        data = {
+            "id": "58aae9ea3473102e291d4976",
+            "name": "FabLab Chambéry",
+            "desc": "",
+            "descData": null,
+            "closed": false,
+            "idOrganization": "58aae8c299c86cc2bdc95582",
+            "invited": false,
+            "pinned": false,
+            "starred": true,
+            "url": "https://trello.com/b/NNpc2XMf/fablab-chambery",
+            "prefs": {
+                "permissionLevel": "public",
+                "voting": "members",
+                "comments": "members",
+                "invitations": "members",
+                "selfJoin": true,
+                "cardCovers": true,
+                "cardAging": "regular",
+                "calendarFeedEnabled": false,
+                "background": "sky",
+                "backgroundImage": null,
+                "backgroundImageScaled": null,
+                "backgroundTile": false,
+                "backgroundBrightness": "dark",
+                "backgroundColor": "#00AECC",
+                "canBePublic": true,
+                "canBeOrg": true,
+                "canBePrivate": true,
+                "canInvite": true
+            },
+            "invitations": [],
+            "memberships": [{
+                "id": "58aae9ea3473102e291d4977",
+                "idMember": "5202aad07c46b070170004fd",
+                "memberType": "admin",
+                "unconfirmed": false,
+                "deactivated": false
+            }, {
+                "id": "58b0104929214d3aef876ed1",
+                "idMember": "58b0104929214d3aef876ecd",
+                "memberType": "normal",
+                "unconfirmed": true,
+                "deactivated": false
+            }, {
+                "id": "58b0105fa69ae0308b81481d",
+                "idMember": "51216f2e3ded8bbb61004a5f",
+                "memberType": "admin",
+                "unconfirmed": false,
+                "deactivated": false
+            }, {
+                "id": "58b010626a99786c642e79e3",
+                "idMember": "545302c9bbfa02c0aa8bd014",
+                "memberType": "normal",
+                "unconfirmed": false,
+                "deactivated": false
+            }],
+            "shortLink": "NNpc2XMf",
+            "subscribed": false,
+            "labelNames": {
+                "green": "",
+                "yellow": "marketing",
+                "orange": "",
+                "red": "non-modifiable",
+                "purple": "gouvernance",
+                "blue": "",
+                "sky": "",
+                "lime": "communication",
+                "pink": "",
+                "black": ""
+            },
+            "powerUps": [],
+            "dateLastActivity": "2017-03-02T11:35:32.885Z",
+            "dateLastView": "2017-03-02T11:38:02.128Z",
+            "shortUrl": "https://trello.com/b/NNpc2XMf",
+            "idTags": [],
+            "datePluginDisable": null,
+            "actions": [{
+                "id": "58b80382179703c770cd19b4",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Gestion de Projet",
+                        "id": "58b8030785beeaa610e6e0b9"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "pQ8X16KX",
+                        "idShort": 7,
+                        "name": "Compiler le Cahier des Charges pour financement",
+                        "id": "58b8034182607b488405eac6",
+                        "desc": "Définir le coût total du projet."
+                    },
+                    "old": {
+                        "desc": ""
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-02T11:35:30.034Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b8034182607b488405eac7",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Gestion de Projet",
+                        "id": "58b8030785beeaa610e6e0b9"
+                    },
+                    "card": {
+                        "shortLink": "pQ8X16KX",
+                        "idShort": 7,
+                        "name": "Compiler le Cahier des Charges pour financement",
+                        "id": "58b8034182607b488405eac6"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-03-02T11:34:25.446Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b8030785beeaa610e6e0ba",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Gestion de Projet",
+                        "id": "58b8030785beeaa610e6e0b9"
+                    }
+                },
+                "type": "createList",
+                "date": "2017-03-02T11:33:27.316Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b801d3519d0f1038c3aef1",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "plugin": {
+                        "url": "https://voting.trello.services/manifest.json",
+                        "public": true,
+                        "name": "Voting",
+                        "id": "55a5d917446f517774210013"
+                    }
+                },
+                "type": "enablePlugin",
+                "date": "2017-03-02T11:28:19.062Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6ef1e183719bbb4fc1eb3",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "idMember": "51216f2e3ded8bbb61004a5f"
+                },
+                "type": "makeAdminOfBoard",
+                "date": "2017-03-01T15:56:14.833Z",
+                "member": {
+                    "id": "51216f2e3ded8bbb61004a5f",
+                    "avatarHash": "fae4d56fc5ba5acf7eda774de7501b5d",
+                    "fullName": "Laurent Baron",
+                    "initials": "LB",
+                    "username": "laurentbar73gmailcom"
+                },
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6ee2201605c634181e0fe",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3"
+                    },
+                    "attachment": {
+                        "url": "https://trello-attachments.s3.amazonaws.com/58aae9ea3473102e291d4976/58b6e451afb9fb36ff5eb5f3/b22c502c1f215535d945c5fe2c048c20/cloud-mots-cles.jpg",
+                        "name": "cloud-mots-cles.jpg",
+                        "id": "58b6ee2101605c634181e0ea",
+                        "previewUrl": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/600x390/10c24d9c652952666af16ff407dfba08/cloud-mots-cles.jpg.png",
+                        "previewUrl2x": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/660x429/845d058b8391321b995222336c331901/cloud-mots-cles.jpg.png"
+                    }
+                },
+                "type": "addAttachmentToCard",
+                "date": "2017-03-01T15:52:02.382Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6ec865a0c8cd156e9818a",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3",
+                        "desc": "Cette liste permet de faire l'image jointe, grâce a cet outil : http://www.tagxedo.com/\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids)."
+                    },
+                    "old": {
+                        "desc": "Cette liste permet de faire l'image jointe, grâce a cet outil : http://www.tagxedo.com/app.html\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids)."
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T15:45:10.359Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6e659bcf0f5ea154853b8",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3",
+                        "desc": "Cette liste permet de faire l'image jointe, grâce a cet outil : http://www.tagxedo.com/app.html\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids)."
+                    },
+                    "old": {
+                        "desc": "Cette liste permet de faire l'image jointe\ngrâce a cet outil : http://www.tagxedo.com/app.html\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids)."
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T15:18:49.831Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6e64749c21a3139778dba",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3"
+                    },
+                    "text": "fablab,\nChambéry,\nSavoie,\nidée,\ninnovation,\nprojet,\noutils,\néchanger,\ncollaboration,\ncoopération,\npartage,\nentraide,\n..."
+                },
+                "type": "commentCard",
+                "date": "2017-03-01T15:18:31.076Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6e4fd3503211d32ef4bf0",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3",
+                        "desc": "Cette liste permet de faire l'image jointe\ngrâce a cet outil : http://www.tagxedo.com/app.html\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids)."
+                    },
+                    "old": {
+                        "desc": ""
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T15:13:01.951Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6e451afb9fb36ff5eb5f4",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "card": {
+                        "shortLink": "g4dWMgNY",
+                        "idShort": 6,
+                        "name": "Mot(s)-clé(s) du projet",
+                        "id": "58b6e451afb9fb36ff5eb5f3"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-03-01T15:10:09.280Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6e33540a47a39eb75b688",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "yf846gmu",
+                        "idShort": 5,
+                        "name": "Nos Outils de Communication",
+                        "id": "58b6dad108d1629fb1ceb343",
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/)\n\n- Agenda (Calendrier) : voir Wiki\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- MindMap : https://www.mindmup.com"
+                    },
+                    "old": {
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/)"
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T15:05:25.871Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6dff07292105119f15af8",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "yf846gmu",
+                        "idShort": 5,
+                        "name": "Nos Outils de Communication",
+                        "id": "58b6dad108d1629fb1ceb343",
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/)"
+                    },
+                    "old": {
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/bin/view/Main/)"
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T14:51:28.870Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6dfdbcb4e3ef149c08ef5",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "yf846gmu",
+                        "idShort": 5,
+                        "name": "Nos Outils de Communication",
+                        "id": "58b6dad108d1629fb1ceb343",
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/bin/view/Main/)"
+                    },
+                    "old": {
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/"
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T14:51:07.447Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6dcb07584c0da59610c30",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "yf846gmu",
+                        "idShort": 5,
+                        "name": "Nos Outils de Communication",
+                        "id": "58b6dad108d1629fb1ceb343",
+                        "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/"
+                    },
+                    "old": {
+                        "desc": ""
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T14:37:36.396Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6dad108d1629fb1ceb344",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "card": {
+                        "shortLink": "yf846gmu",
+                        "idShort": 5,
+                        "name": "Nos Outils de Communication",
+                        "id": "58b6dad108d1629fb1ceb343"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-03-01T14:29:37.411Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6da88bf3f648ba300467e",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    },
+                    "card": {
+                        "shortLink": "7lD5X6pZ",
+                        "idShort": 4,
+                        "name": "Bienvenue au FabLab Chambéry, un projet public, ouvert et citoyen. Vous etes au bon endroit si vous voulez participer au projet ou simplement suivre l'avancement.",
+                        "id": "58b6da88bf3f648ba300467d"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-03-01T14:28:24.329Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6d9d53ac7ea65612cd722",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404",
+                        "pos": 16383.75
+                    },
+                    "old": {
+                        "pos": 131071
+                    }
+                },
+                "type": "updateList",
+                "date": "2017-03-01T14:25:25.884Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6d9d2076418dece146405",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Pour les Nouveaux",
+                        "id": "58b6d9d2076418dece146404"
+                    }
+                },
+                "type": "createList",
+                "date": "2017-03-01T14:25:22.350Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b6d937e9ad0185ea63bd15",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "JPNxKnoQ",
+                        "idShort": 3,
+                        "name": "Groupe Loomio de la gouvernance du FabLab",
+                        "id": "58b596b03f829c1bc3a4c0fa",
+                        "desc": "Groupe dédié aux réflexions, aux propositions, aux débats jusqu'au choix d'un (nouveau) modèle de gouvernance pour le FabLab Chambéry.\n\nParticipez aux débats et aux échanges sur la plateforme Loomio :\nhttps://www.loomio.org/g/CNsnOfaM/fablab-chamb-ry"
+                    },
+                    "old": {
+                        "desc": "https://loomio.org/"
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-03-01T14:22:47.146Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b5ea7c9206b5ca9f68c7a2",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "JPNxKnoQ",
+                        "idShort": 3,
+                        "name": "Groupe Loomio de la gouvernance du FabLab",
+                        "id": "58b596b03f829c1bc3a4c0fa",
+                        "desc": "https://loomio.org/"
+                    },
+                    "old": {
+                        "desc": ""
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-02-28T21:24:12.016Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b596b03f829c1bc3a4c0fb",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "card": {
+                        "shortLink": "JPNxKnoQ",
+                        "idShort": 3,
+                        "name": "Groupe Loomio de la gouvernance du FabLab",
+                        "id": "58b596b03f829c1bc3a4c0fa"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-02-28T15:26:40.043Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b59666e3eb28e58fd7e9c0",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc",
+                        "pos": 32767.5
+                    },
+                    "old": {
+                        "pos": 81919
+                    }
+                },
+                "type": "updateList",
+                "date": "2017-02-28T15:25:26.138Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b5965c1598db643eb3d2e0",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "AnFK1yHB",
+                        "idShort": 2,
+                        "name": "Bénéficiez des services et contribuez à la Conciergerie du Makerspace",
+                        "id": "58b59552ad04b1ce5c05f67a",
+                        "idLabels": [[["58aaf10dced82109ff5e2570"]], []]
+                    },
+                    "old": {
+                        "idLabels": ["58aaf10dced82109ff5e2570"]
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-02-28T15:25:16.653Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b595e9ed7a607c314d48ab",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "card": {
+                        "shortLink": "AnFK1yHB",
+                        "idShort": 2,
+                        "id": "58b59552ad04b1ce5c05f67a",
+                        "name": "Bénéficiez des services et contribuez à la Conciergerie du Makerspace"
+                    },
+                    "old": {
+                        "name": "Bénéficiez des services et"
+                    }
+                },
+                "type": "updateCard",
+                "date": "2017-02-28T15:23:21.432Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b59552ad04b1ce5c05f67b",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    },
+                    "card": {
+                        "shortLink": "AnFK1yHB",
+                        "idShort": 2,
+                        "name": "Bénéficiez des services et",
+                        "id": "58b59552ad04b1ce5c05f67a"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-02-28T15:20:50.773Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b59442406f9d5e96a738dd",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Accueil et Conciergerie",
+                        "id": "58b59442406f9d5e96a738dc"
+                    }
+                },
+                "type": "createList",
+                "date": "2017-02-28T15:16:18.797Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b010626a99786c642e79e4",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "idMemberAdded": "545302c9bbfa02c0aa8bd014",
+                    "memberType": "normal"
+                },
+                "type": "addMemberToBoard",
+                "date": "2017-02-24T10:52:18.089Z",
+                "member": {
+                    "id": "545302c9bbfa02c0aa8bd014",
+                    "avatarHash": "4b0cb4ba419a9a61d6efcae770d84bde",
+                    "fullName": "May Lyssa",
+                    "initials": "ML",
+                    "username": "maylyssa"
+                },
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b0105fa69ae0308b81481e",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "idMemberAdded": "51216f2e3ded8bbb61004a5f",
+                    "memberType": "normal"
+                },
+                "type": "addMemberToBoard",
+                "date": "2017-02-24T10:52:15.337Z",
+                "member": {
+                    "id": "51216f2e3ded8bbb61004a5f",
+                    "avatarHash": "fae4d56fc5ba5acf7eda774de7501b5d",
+                    "fullName": "Laurent Baron",
+                    "initials": "LB",
+                    "username": "laurentbar73gmailcom"
+                },
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58b0104929214d3aef876ed3",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "member": {
+                        "name": "Juraj Krč-Turba",
+                        "id": "5202aad07c46b070170004fd"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    }
+                },
+                "type": "unconfirmedBoardInvitation",
+                "date": "2017-02-24T10:51:53.435Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58aaf12b9ee7e7b951dd70af",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976",
+                        "prefs": {
+                            "background": "sky"
+                        }
+                    },
+                    "old": {
+                        "prefs": {
+                            "background": "blue"
+                        }
+                    }
+                },
+                "type": "updateBoard",
+                "date": "2017-02-20T13:37:47.401Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58aaf059fc12cbedc9590359",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Coworking et Coliving",
+                        "id": "58aaf026ed62f343ca0b4961"
+                    },
+                    "card": {
+                        "shortLink": "4YlSBfHd",
+                        "idShort": 1,
+                        "name": "Utilisez et participer à l'amélioration des espaces du Makerspace",
+                        "id": "58aaf059fc12cbedc9590358"
+                    }
+                },
+                "type": "createCard",
+                "date": "2017-02-20T13:34:17.044Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58aaf026ed62f343ca0b4962",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    },
+                    "list": {
+                        "name": "Coworking et Coliving",
+                        "id": "58aaf026ed62f343ca0b4961"
+                    }
+                },
+                "type": "createList",
+                "date": "2017-02-20T13:33:26.771Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58aae9ea3473102e291d4979",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "organization": {
+                        "name": "Bricoleurs",
+                        "id": "58aae8c299c86cc2bdc95582"
+                    },
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    }
+                },
+                "type": "addToOrganizationBoard",
+                "date": "2017-02-20T13:06:50.189Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }, {
+                "id": "58aae9ea3473102e291d4978",
+                "idMemberCreator": "5202aad07c46b070170004fd",
+                "data": {
+                    "board": {
+                        "shortLink": "NNpc2XMf",
+                        "name": "FabLab Chambéry",
+                        "id": "58aae9ea3473102e291d4976"
+                    }
+                },
+                "type": "createBoard",
+                "date": "2017-02-20T13:06:50.173Z",
+                "memberCreator": {
+                    "id": "5202aad07c46b070170004fd",
+                    "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                    "fullName": "Juraj Krč-Turba",
+                    "initials": "JKT",
+                    "username": "yurayko"
+                }
+            }],
+            "cards": [{
+                "id": "58b6da88bf3f648ba300467d",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-03-01T14:28:30.229Z",
+                "desc": "",
+                "descData": null,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b6d9d2076418dece146404",
+                "idMembersVoted": [],
+                "idShort": 4,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": ["58aaf10dced82109ff5e2570"],
+                "name": "Bienvenue au FabLab Chambéry, un projet public, ouvert et citoyen. Vous etes au bon endroit si vous voulez participer au projet ou simplement suivre l'avancement.",
+                "pos": 65535,
+                "shortLink": "7lD5X6pZ",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": false,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntskdigwg96kfcoebh+17o7xybqj5@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58aaf10dced82109ff5e2570",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "non-modifiable",
+                    "color": "red",
+                    "uses": 3
+                }],
+                "shortUrl": "https://trello.com/c/7lD5X6pZ",
+                "subscribed": false,
+                "url": "https://trello.com/c/7lD5X6pZ/4-bienvenue-au-fablab-chambery-un-projet-public-ouvert-et-citoyen-vous-etes-au-bon-endroit-si-vous-voulez-participer-au-projet-ou-",
+                "attachments": [],
+                "pluginData": []
+            }, {
+                "id": "58b6dad108d1629fb1ceb343",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-03-01T15:56:37.572Z",
+                "desc": "- Mailing List : http://alpinux.org/post/2017/FabLab-%C3%A0-Chamb%C3%A9ry\n\n- Blog / Wiki : http://leprototype.info (http://176.179.142.26:8080/)\n\n- Agenda (Calendrier) : voir Wiki\n\n- Trello : Gestion de projet : https://trello.com/b/NNpc2XMf/fablab-chambery\n\n- Taiga (c'est juste un essai) : https://tree.taiga.io/project/yurayko-fablab-a-chambery/\n\n- MindMap : https://www.mindmup.com",
+                "descData": {
+                    "emoji": {}
+                },
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b6d9d2076418dece146404",
+                "idMembersVoted": [],
+                "idShort": 5,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": ["58b6daecced82109ff8646e3", "58b6e361ced82109ff868168"],
+                "name": "Nos Outils de Communication",
+                "pos": 131071,
+                "shortLink": "yf846gmu",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": true,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntsklbvyh0golkihxf+16za5huh5q@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58b6daecced82109ff8646e3",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "marketing",
+                    "color": "yellow",
+                    "uses": 2
+                }, {
+                    "id": "58b6e361ced82109ff868168",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "communication",
+                    "color": "lime",
+                    "uses": 1
+                }],
+                "shortUrl": "https://trello.com/c/yf846gmu",
+                "subscribed": false,
+                "url": "https://trello.com/c/yf846gmu/5-nos-outils-de-communication",
+                "attachments": [],
+                "pluginData": []
+            }, {
+                "id": "58b6e451afb9fb36ff5eb5f3",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-03-01T15:52:02.383Z",
+                "desc": "Cette liste permet de faire l'image jointe, grâce a cet outil : http://www.tagxedo.com/\nListons ici tout les mots-clés correspondants au projet (répéter les mot pour leur donner plus de poids).",
+                "descData": {
+                    "emoji": {}
+                },
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b6d9d2076418dece146404",
+                "idMembersVoted": [],
+                "idShort": 6,
+                "idAttachmentCover": "58b6ee2101605c634181e0ea",
+                "manualCoverAttachment": false,
+                "idLabels": ["58b6daecced82109ff8646e3"],
+                "name": "Mot(s)-clé(s) du projet",
+                "pos": 196607,
+                "shortLink": "g4dWMgNY",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 1,
+                    "attachments": 1,
+                    "description": true,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntsrwebfpim45ew8oj+289wmoe1sq@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58b6daecced82109ff8646e3",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "marketing",
+                    "color": "yellow",
+                    "uses": 2
+                }],
+                "shortUrl": "https://trello.com/c/g4dWMgNY",
+                "subscribed": false,
+                "url": "https://trello.com/c/g4dWMgNY/6-mot-s-cle-s-du-projet",
+                "attachments": [{
+                    "bytes": 107122,
+                    "date": "2017-03-01T15:52:01.642Z",
+                    "edgeColor": "#fcc428",
+                    "idMember": "5202aad07c46b070170004fd",
+                    "isUpload": true,
+                    "mimeType": null,
+                    "name": "cloud-mots-cles.jpg",
+                    "previews": [{
+                        "bytes": 7285,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/70x50/fa35453c37e822fe3fc80734bea88ce0/cloud-mots-cles.jpg.png",
+                        "height": 50,
+                        "width": 70,
+                        "_id": "58b6ee24502e5e8d563893c5",
+                        "scaled": false
+                    }, {
+                        "bytes": 65384,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/250x150/85926a338bd56104abb7abc4f7a272a6/cloud-mots-cles.jpg.png",
+                        "height": 150,
+                        "width": 250,
+                        "_id": "58b6ee24502e5e8d563893c4",
+                        "scaled": false
+                    }, {
+                        "bytes": 26648,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/150x98/7c2674c0685ddd4ed1e2dc7a92399fed/cloud-mots-cles.jpg.png",
+                        "height": 98,
+                        "width": 150,
+                        "_id": "58b6ee24502e5e8d563893c3",
+                        "scaled": true
+                    }, {
+                        "bytes": 93873,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/300x195/6aab50cbeef2d5bb7934da71bb32b55f/cloud-mots-cles.jpg.png",
+                        "height": 195,
+                        "width": 300,
+                        "_id": "58b6ee24502e5e8d563893c2",
+                        "scaled": true
+                    }, {
+                        "bytes": 337732,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/600x390/10c24d9c652952666af16ff407dfba08/cloud-mots-cles.jpg.png",
+                        "height": 390,
+                        "width": 600,
+                        "_id": "58b6ee24502e5e8d563893c1",
+                        "scaled": true
+                    }, {
+                        "bytes": 399948,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58b6e451afb9fb36ff5eb5f3/660x429/845d058b8391321b995222336c331901/cloud-mots-cles.jpg.png",
+                        "height": 429,
+                        "width": 660,
+                        "_id": "58b6ee24502e5e8d563893c0",
+                        "scaled": true
+                    }, {
+                        "bytes": 107122,
+                        "height": 429,
+                        "width": 660,
+                        "url": "https://trello-attachments.s3.amazonaws.com/58aae9ea3473102e291d4976/58b6e451afb9fb36ff5eb5f3/b22c502c1f215535d945c5fe2c048c20/cloud-mots-cles.jpg",
+                        "_id": "58b6ee24502e5e8d563893bf",
+                        "scaled": true
+                    }],
+                    "url": "https://trello-attachments.s3.amazonaws.com/58aae9ea3473102e291d4976/58b6e451afb9fb36ff5eb5f3/b22c502c1f215535d945c5fe2c048c20/cloud-mots-cles.jpg",
+                    "id": "58b6ee2101605c634181e0ea"
+                }],
+                "pluginData": []
+            }, {
+                "id": "58b59552ad04b1ce5c05f67a",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-02-28T15:25:16.639Z",
+                "desc": "",
+                "descData": null,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b59442406f9d5e96a738dc",
+                "idMembersVoted": [],
+                "idShort": 2,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": ["58aaf10dced82109ff5e2570"],
+                "name": "Bénéficiez des services et contribuez à la Conciergerie du Makerspace",
+                "pos": 16384,
+                "shortLink": "AnFK1yHB",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": false,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntlmaeeohpfdvsb52y+1skt9awf22@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58aaf10dced82109ff5e2570",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "non-modifiable",
+                    "color": "red",
+                    "uses": 3
+                }],
+                "shortUrl": "https://trello.com/c/AnFK1yHB",
+                "subscribed": false,
+                "url": "https://trello.com/c/AnFK1yHB/2-beneficiez-des-services-et-contribuez-a-la-conciergerie-du-makerspace",
+                "attachments": [],
+                "pluginData": []
+            }, {
+                "id": "58b596b03f829c1bc3a4c0fa",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-03-01T14:23:56.195Z",
+                "desc": "Groupe dédié aux réflexions, aux propositions, aux débats jusqu'au choix d'un (nouveau) modèle de gouvernance pour le FabLab Chambéry.\n\nParticipez aux débats et aux échanges sur la plateforme Loomio :\nhttps://www.loomio.org/g/CNsnOfaM/fablab-chamb-ry",
+                "descData": {
+                    "emoji": {}
+                },
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b59442406f9d5e96a738dc",
+                "idMembersVoted": [],
+                "idShort": 3,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": ["58b6d96bced82109ff863d17"],
+                "name": "Groupe Loomio de la gouvernance du FabLab",
+                "pos": 32768,
+                "shortLink": "JPNxKnoQ",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": true,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntlnc7b4mthqsb2ube+1x8vzwl6xq@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58b6d96bced82109ff863d17",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "gouvernance",
+                    "color": "purple",
+                    "uses": 1
+                }],
+                "shortUrl": "https://trello.com/c/JPNxKnoQ",
+                "subscribed": false,
+                "url": "https://trello.com/c/JPNxKnoQ/3-groupe-loomio-de-la-gouvernance-du-fablab",
+                "attachments": [],
+                "pluginData": []
+            }, {
+                "id": "58aaf059fc12cbedc9590358",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-02-20T13:37:18.009Z",
+                "desc": "",
+                "descData": null,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58aaf026ed62f343ca0b4961",
+                "idMembersVoted": [],
+                "idShort": 1,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": ["58aaf10dced82109ff5e2570"],
+                "name": "Utilisez et participer à l'amélioration des espaces du Makerspace",
+                "pos": 65535,
+                "shortLink": "4YlSBfHd",
+                "badges": {
+                    "votes": 0,
+                    "viewingMemberVoted": false,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": false,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2nrzeskux9m677moxug+09n9em7m7s@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [{
+                    "id": "58aaf10dced82109ff5e2570",
+                    "idBoard": "58aae9ea3473102e291d4976",
+                    "name": "non-modifiable",
+                    "color": "red",
+                    "uses": 3
+                }],
+                "shortUrl": "https://trello.com/c/4YlSBfHd",
+                "subscribed": false,
+                "url": "https://trello.com/c/4YlSBfHd/1-utilisez-et-participer-a-l-amelioration-des-espaces-du-makerspace",
+                "attachments": [],
+                "pluginData": []
+            }, {
+                "id": "58b8034182607b488405eac6",
+                "checkItemStates": null,
+                "closed": false,
+                "dateLastActivity": "2017-03-02T11:35:32.885Z",
+                "desc": "Définir le coût total du projet.",
+                "descData": {
+                    "emoji": {}
+                },
+                "idBoard": "58aae9ea3473102e291d4976",
+                "idList": "58b8030785beeaa610e6e0b9",
+                "idMembersVoted": ["5202aad07c46b070170004fd"],
+                "idShort": 7,
+                "idAttachmentCover": null,
+                "manualCoverAttachment": false,
+                "idLabels": [],
+                "name": "Compiler le Cahier des Charges pour financement",
+                "pos": 65535,
+                "shortLink": "pQ8X16KX",
+                "badges": {
+                    "votes": 1,
+                    "viewingMemberVoted": true,
+                    "subscribed": false,
+                    "fogbugz": "",
+                    "checkItems": 0,
+                    "checkItemsChecked": 0,
+                    "comments": 0,
+                    "attachments": 0,
+                    "description": true,
+                    "due": null,
+                    "dueComplete": false
+                },
+                "dueComplete": false,
+                "due": null,
+                "email": "yurayko+2gl3qcjhclhdzo88oal+2ntywjxbyi5fu2r8gxy+0hiokzhu0g@boards.trello.com",
+                "idChecklists": [],
+                "idMembers": [],
+                "labels": [],
+                "shortUrl": "https://trello.com/c/pQ8X16KX",
+                "subscribed": false,
+                "url": "https://trello.com/c/pQ8X16KX/7-compiler-le-cahier-des-charges-pour-financement",
+                "attachments": [],
+                "pluginData": []
+            }],
+            "labels": [{
+                "id": "58aaf10dced82109ff5e2570",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "non-modifiable",
+                "color": "red",
+                "uses": 3
+            }, {
+                "id": "58b6daecced82109ff8646e3",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "marketing",
+                "color": "yellow",
+                "uses": 2
+            }, {
+                "id": "58b6d96bced82109ff863d17",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "gouvernance",
+                "color": "purple",
+                "uses": 1
+            }, {
+                "id": "58b6e361ced82109ff868168",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "communication",
+                "color": "lime",
+                "uses": 1
+            }, {
+                "id": "58aae9eaced82109ff5dfefa",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "green",
+                "uses": 0
+            }, {
+                "id": "58aae9eaced82109ff5dfefb",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "orange",
+                "uses": 0
+            }, {
+                "id": "58aae9eaced82109ff5dfefc",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "yellow",
+                "uses": 0
+            }, {
+                "id": "58aae9eaced82109ff5dfefd",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "red",
+                "uses": 0
+            }, {
+                "id": "58aae9eaced82109ff5dfefe",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "purple",
+                "uses": 0
+            }, {
+                "id": "58aae9eaced82109ff5dfeff",
+                "idBoard": "58aae9ea3473102e291d4976",
+                "name": "",
+                "color": "blue",
+                "uses": 0
+            }],
+            "lists": [{
+                "id": "58b6d9d2076418dece146404",
+                "name": "Pour les Nouveaux",
+                "closed": false,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "pos": 16383.75,
+                "subscribed": false
+            }, {
+                "id": "58b59442406f9d5e96a738dc",
+                "name": "Accueil et Conciergerie",
+                "closed": false,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "pos": 32767.5,
+                "subscribed": false
+            }, {
+                "id": "58aaf026ed62f343ca0b4961",
+                "name": "Coworking et Coliving",
+                "closed": false,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "pos": 65535,
+                "subscribed": false
+            }, {
+                "id": "58b8030785beeaa610e6e0b9",
+                "name": "Gestion de Projet",
+                "closed": false,
+                "idBoard": "58aae9ea3473102e291d4976",
+                "pos": 131071,
+                "subscribed": false
+            }],
+            "members": [{
+                "id": "5202aad07c46b070170004fd",
+                "avatarHash": "b9777393c426fcaee70d9073af0626c0",
+                "bio": "Yes I'm bio ;-)",
+                "bioData": null,
+                "confirmed": true,
+                "fullName": "Juraj Krč-Turba",
+                "idPremOrgsAdmin": [],
+                "initials": "JKT",
+                "memberType": "normal",
+                "products": [],
+                "status": "disconnected",
+                "url": "https://trello.com/yurayko",
+                "username": "yurayko"
+            }, {
+                "id": "51216f2e3ded8bbb61004a5f",
+                "avatarHash": "fae4d56fc5ba5acf7eda774de7501b5d",
+                "bio": "",
+                "bioData": {
+                    "emoji": {}
+                },
+                "confirmed": true,
+                "fullName": "Laurent Baron",
+                "idPremOrgsAdmin": [],
+                "initials": "LB",
+                "memberType": "normal",
+                "products": [],
+                "status": "disconnected",
+                "url": "https://trello.com/laurentbar73gmailcom",
+                "username": "laurentbar73gmailcom"
+            }, {
+                "id": "58b0104929214d3aef876ecd",
+                "avatarHash": null,
+                "bio": "",
+                "bioData": null,
+                "confirmed": false,
+                "fullName": "MarySabine",
+                "idPremOrgsAdmin": [],
+                "initials": "M",
+                "memberType": "ghost",
+                "products": [],
+                "status": "disconnected",
+                "url": "https://trello.com/marysabine",
+                "username": "marysabine"
+            }, {
+                "id": "545302c9bbfa02c0aa8bd014",
+                "avatarHash": "4b0cb4ba419a9a61d6efcae770d84bde",
+                "bio": "",
+                "bioData": null,
+                "confirmed": true,
+                "fullName": "May Lyssa",
+                "idPremOrgsAdmin": [],
+                "initials": "ML",
+                "memberType": "normal",
+                "products": [],
+                "status": "disconnected",
+                "url": "https://trello.com/maylyssa",
+                "username": "maylyssa"
+            }],
+            "checklists": [],
+            "pluginData": []
+        };
+    </script>
+
+</body>
+
+</html>
